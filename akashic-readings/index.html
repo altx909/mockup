@@ -867,25 +867,66 @@ footer {
 }
 .quiz-again:hover { color: var(--text); }
 
+/* ─── Mute button ─── */
+.mute-btn {
+  position: fixed; top: 1.05rem; right: 10.5rem;
+  z-index: 200; width: 36px; height: 36px;
+  border: 1px solid rgba(201,165,90,0.22);
+  border-radius: 50%;
+  background: rgba(6,4,18,0.72);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  color: var(--muted); cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: border-color .2s, color .2s;
+  padding: 0;
+}
+.mute-btn:hover { border-color: rgba(201,165,90,0.5); color: var(--gold); }
+.mute-btn svg { width: 15px; height: 15px; display: block; }
+
 /* ─── Responsive ─── */
 @media (max-width: 900px) {
   nav { padding: 1rem 1.5rem; }
   .nav-links { display: none; }
+  .nav-logo-name { display: none; }
+  .mute-btn { right: 7rem; top: 1.1rem; }
+  /* Hero: strip left-to-right gradient on portrait, use vertical fade only so Chris shows */
+  .hero-bg { background-position: 78% 15%; }
+  .hero-bg::after {
+    background: linear-gradient(to bottom,
+      rgba(6,4,18,0.12) 0%,
+      rgba(6,4,18,0.05) 20%,
+      rgba(6,4,18,0.38) 55%,
+      rgba(6,4,18,0.9) 80%,
+      rgba(6,4,18,0.97) 100%);
+  }
   .hero-body { padding: 0 1.5rem; }
-  .hero h1 { font-size: clamp(3.2rem, 12vw, 5.5rem); }
+  .hero h1 { font-size: clamp(2.8rem, 11vw, 5rem); }
+  .hero-sub { font-size: 0.9rem; max-width: 38ch; }
+  .hero-actions { gap: 0.75rem; }
+  .btn { padding: 0.85rem 1.75rem; font-size: 0.7rem; }
   .about-grid, .for-you-grid { grid-template-columns: 1fr; gap: 3rem; }
   .fy-photo-wrap { order: -1; }
   .services-grid, .process-row, .testi-grid { grid-template-columns: 1fr; }
   .step:not(:last-child)::after { display: none; }
   .book-strip-inner { flex-direction: column; text-align: center; padding: 2rem 1.5rem; }
+  .book-strip-inner h4 { font-size: 1.35rem; }
   .ft-top { flex-direction: column; }
   .trust-sep { display: none; }
-  .testi-feature { padding: 2rem 1.5rem; }
-  .cta-box { padding: 4rem 1.5rem; }
+  .trust-row { gap: 1rem; }
+  .testi-feature { padding: 2rem 1.5rem; font-size: 1.25rem; }
+  .cta-box { padding: 3.5rem 1.5rem; }
+  .cta-box h2 { font-size: clamp(1.7rem, 7vw, 3rem); }
   .geo { display: none; }
   .quiz-cols { grid-template-columns: 1fr; gap: 3rem; }
   .quiz-symbol-col { display: none; }
   .quiz-wrap { text-align: center; }
+  .quiz-opts { align-items: center; }
+  .quiz-opt { text-align: left; }
+  .intro-pull { font-size: clamp(1.3rem, 4.5vw, 2rem); }
+  .services-grid { gap: 1rem; }
+  .sc { padding: 2rem 1.5rem; }
+  .for-you-grid { gap: 2.5rem; }
 }
 </style>
 </head>
@@ -910,8 +951,22 @@ footer {
     <li><a href="#testimonials">Stories</a></li>
     <li><a href="#contact">Contact</a></li>
   </ul>
-  <a href="#services" class="nav-cta">Book a Reading</a>
+  <div style="display:flex;align-items:center;gap:0.75rem">
+    <button id="muteBtn" class="mute-btn" aria-label="Play ambient music" title="Toggle music">
+      <!-- muted by default -->
+      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <polygon points="3,7 7,7 11,3 11,17 7,13 3,13" fill="none"/>
+        <line x1="14" y1="7" x2="19" y2="13"/>
+        <line x1="19" y1="7" x2="14" y2="13"/>
+      </svg>
+    </button>
+    <a href="#services" class="nav-cta">Book a Reading</a>
+  </div>
 </nav>
+<!-- Ambient audio — plays on first user interaction -->
+<audio id="bgMusic" loop preload="none">
+  <source src="music.mp3" type="audio/mpeg">
+</audio>
 
 <!-- Hero -->
 <section class="hero">
@@ -1442,6 +1497,37 @@ document.getElementById('quizAgain').onclick = () => {
   qRender();
 };
 qRender();
+
+// ── Ambient music ──
+// ponytail: browser blocks autoplay without gesture; trigger on first scroll or click
+(function() {
+  const music   = document.getElementById('bgMusic');
+  const btn     = document.getElementById('muteBtn');
+  const iconOn  = `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="3,7 7,7 11,3 11,17 7,13 3,13" fill="none"/><path d="M14 7.5 Q17 10 14 12.5"/><path d="M16 5 Q20 10 16 15"/></svg>`;
+  const iconOff = `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="3,7 7,7 11,3 11,17 7,13 3,13" fill="none"/><line x1="14" y1="7" x2="19" y2="13"/><line x1="19" y1="7" x2="14" y2="13"/></svg>`;
+  let started = false;
+  music.volume = 0.16; // gentle background level
+
+  function start() {
+    if (started) return;
+    started = true;
+    music.play().then(() => {
+      btn.innerHTML = iconOn;
+      btn.setAttribute('aria-label', 'Mute music');
+    }).catch(() => {});
+  }
+
+  btn.onclick = () => {
+    if (!started) { start(); return; }
+    music.muted = !music.muted;
+    btn.innerHTML = music.muted ? iconOff : iconOn;
+    btn.setAttribute('aria-label', music.muted ? 'Unmute music' : 'Mute music');
+  };
+
+  // Start on first scroll or page interaction
+  document.addEventListener('scroll', start, { once: true, passive: true });
+  document.addEventListener('click',  start, { once: true });
+})();
 
 // ponytail: native IntersectionObserver, no library needed
 const io = new IntersectionObserver(
