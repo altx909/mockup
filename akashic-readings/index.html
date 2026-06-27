@@ -869,27 +869,27 @@ footer {
 
 /* ─── Mute button ─── */
 .mute-btn {
-  position: fixed; top: 1.05rem; right: 10.5rem;
-  z-index: 200; width: 36px; height: 36px;
-  border: 1px solid rgba(201,165,90,0.22);
+  position: fixed; bottom: 1.75rem; left: 1.75rem;
+  z-index: 200; width: 42px; height: 42px;
+  border: 1px solid rgba(201,165,90,0.28);
   border-radius: 50%;
-  background: rgba(6,4,18,0.72);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
+  background: rgba(6,4,18,0.82);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   color: var(--muted); cursor: pointer;
   display: flex; align-items: center; justify-content: center;
-  transition: border-color .2s, color .2s;
+  transition: border-color .25s, color .25s, box-shadow .25s;
   padding: 0;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.4);
 }
-.mute-btn:hover { border-color: rgba(201,165,90,0.5); color: var(--gold); }
-.mute-btn svg { width: 15px; height: 15px; display: block; }
+.mute-btn:hover { border-color: rgba(201,165,90,0.55); color: var(--gold); box-shadow: 0 4px 24px rgba(201,165,90,0.15); }
+.mute-btn svg { width: 16px; height: 16px; display: block; }
 
 /* ─── Responsive ─── */
 @media (max-width: 900px) {
   nav { padding: 1rem 1.5rem; }
   .nav-links { display: none; }
   .nav-logo-name { display: none; }
-  .mute-btn { right: 7rem; top: 1.1rem; }
   /* Hero: strip left-to-right gradient on portrait, use vertical fade only so Chris shows */
   .hero-bg { background-position: 78% 15%; }
   .hero-bg::after {
@@ -951,22 +951,20 @@ footer {
     <li><a href="#testimonials">Stories</a></li>
     <li><a href="#contact">Contact</a></li>
   </ul>
-  <div style="display:flex;align-items:center;gap:0.75rem">
-    <button id="muteBtn" class="mute-btn" aria-label="Play ambient music" title="Toggle music">
-      <!-- muted by default -->
-      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-        <polygon points="3,7 7,7 11,3 11,17 7,13 3,13" fill="none"/>
-        <line x1="14" y1="7" x2="19" y2="13"/>
-        <line x1="19" y1="7" x2="14" y2="13"/>
-      </svg>
-    </button>
-    <a href="#services" class="nav-cta">Book a Reading</a>
-  </div>
+  <a href="#services" class="nav-cta">Book a Reading</a>
 </nav>
-<!-- Ambient audio — plays on first user interaction -->
-<audio id="bgMusic" loop preload="none">
+<!-- Ambient audio -->
+<audio id="bgMusic" loop preload="auto">
   <source src="music.mp3" type="audio/mpeg">
 </audio>
+<!-- Music toggle — bottom left -->
+<button id="muteBtn" class="mute-btn" aria-label="Play ambient music" title="Toggle music">
+  <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <polygon points="3,7 7,7 11,3 11,17 7,13 3,13" fill="none"/>
+    <line x1="14" y1="7" x2="19" y2="13"/>
+    <line x1="19" y1="7" x2="14" y2="13"/>
+  </svg>
+</button>
 
 <!-- Hero -->
 <section class="hero">
@@ -1499,34 +1497,37 @@ document.getElementById('quizAgain').onclick = () => {
 qRender();
 
 // ── Ambient music ──
-// ponytail: browser blocks autoplay without gesture; trigger on first scroll or click
 (function() {
   const music   = document.getElementById('bgMusic');
   const btn     = document.getElementById('muteBtn');
   const iconOn  = `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="3,7 7,7 11,3 11,17 7,13 3,13" fill="none"/><path d="M14 7.5 Q17 10 14 12.5"/><path d="M16 5 Q20 10 16 15"/></svg>`;
   const iconOff = `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="3,7 7,7 11,3 11,17 7,13 3,13" fill="none"/><line x1="14" y1="7" x2="19" y2="13"/><line x1="19" y1="7" x2="14" y2="13"/></svg>`;
   let started = false;
-  music.volume = 0.16; // gentle background level
+  music.volume = 0.16;
 
-  function start() {
+  function startMusic() {
     if (started) return;
     started = true;
     music.play().then(() => {
       btn.innerHTML = iconOn;
       btn.setAttribute('aria-label', 'Mute music');
-    }).catch(() => {});
+    }).catch(() => { started = false; });
   }
 
-  btn.onclick = () => {
-    if (!started) { start(); return; }
+  btn.onclick = (e) => {
+    e.stopPropagation();
+    if (!started) { startMusic(); return; }
     music.muted = !music.muted;
     btn.innerHTML = music.muted ? iconOff : iconOn;
     btn.setAttribute('aria-label', music.muted ? 'Unmute music' : 'Mute music');
   };
 
-  // Start on first scroll or page interaction
-  document.addEventListener('scroll', start, { once: true, passive: true });
-  document.addEventListener('click',  start, { once: true });
+  // Trigger on scroll — use a named handler so it actually fires
+  function onScroll() {
+    startMusic();
+    window.removeEventListener('scroll', onScroll);
+  }
+  window.addEventListener('scroll', onScroll, { passive: true });
 })();
 
 // ponytail: native IntersectionObserver, no library needed
